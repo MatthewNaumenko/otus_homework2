@@ -33,8 +33,13 @@ jobs:
       - name: Build
         run: cmake --build build_ipf --config Release -- -j2
 
+      - name: List tests (discovery)
+        working-directory: build_ipf
+        run: ctest -N
+
       - name: Test (CTest)
-        run: ctest --test-dir build_ipf --output-on-failure
+        working-directory: build_ipf
+        run: ctest --output-on-failure
 
       - name: Package (.deb via CPack)
         run: cpack --config build_ipf/CPackConfig.cmake
