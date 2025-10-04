@@ -1,0 +1,52 @@
+name: Build ip_filter
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v*"
+
+jobs:
+  ip-filter:
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
+    env:
+      BUILD_NUMBER: ${{ github.run_number }}
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      - name: Install build tools in container
+        run: |
+          apt-get update
+          apt-get install -y git ca-certificates cmake build-essential
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure (CMake)
+        run: cmake -S homework_2 -B build_ipf -D BUILD_NUMBER=${BUILD_NUMBER} -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build_ipf --config Release -- -j2
+
+      - name: Test (CTest)
+        run: ctest --test-dir build_ipf --output-on-failure
+
+      - name: Package (.deb via CPack)
+        run: cpack --config build_ipf/CPackConfig.cmake
+
+      - name: Upload artifact (.deb)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ip_filter-deb
+          path: ip_filter-0.0.${{ env.BUILD_NUMBER }}-Linux.deb
+
+      - name: Create GitHub Release (only on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ip_filter-0.0.${{ env.BUILD_NUMBER }}-Linux.deb
